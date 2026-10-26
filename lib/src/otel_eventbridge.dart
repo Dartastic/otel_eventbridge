@@ -1,22 +1,25 @@
-// Licensed under the Dartastic Pro Software License Agreement.
+// Licensed under the Apache License, Version 2.0
 // Copyright 2025-2026 Mindful Software LLC d/b/a Dartastic.io, All rights reserved.
 
-import 'package:dartastic_opentelemetry/dartastic_opentelemetry.dart';
+import 'package:dartastic_opentelemetry_api/dartastic_opentelemetry_api.dart';
 
 import 'otel_eventbridge_suppression.dart';
 
 const _tracerName = 'dartastic_otel_libs_eventbridge';
 const _systemValue = 'aws_eventbridge';
 
-Tracer _tracer() => OTel.tracerProvider().getTracer(_tracerName);
+APITracer _tracer() => OTelAPI.tracerProvider().getTracer(_tracerName);
 
 /// Pair returned from `tracedEventbridgePutEvents` callback.
 class EventbridgePutResult<T> {
+  /// Creates a result.
   const EventbridgePutResult({
     required this.value,
     this.eventId,
     this.failedEntryCount,
   });
+
+  /// The value returned to the caller.
   final T value;
   final String? eventId;
   final int? failedEntryCount;
@@ -50,17 +53,18 @@ Future<T> tracedEventbridgePutEvents<T>({
   final span = _tracer().startSpan(
     'put-events $eventBus',
     kind: SpanKind.producer,
-    attributes: OTel.attributesFromMap(m),
+    attributes: OTelAPI.attributesFromMap(m),
   );
   try {
     final r = await invoke();
     final extras = <Attribute<Object>>[];
     if (r.eventId != null) {
-      extras.add(OTel.attributeString('messaging.message.id', r.eventId!));
-      extras.add(OTel.attributeString('aws.eventbridge.event_id', r.eventId!));
+      extras.add(OTelAPI.attributeString('messaging.message.id', r.eventId!));
+      extras
+          .add(OTelAPI.attributeString('aws.eventbridge.event_id', r.eventId!));
     }
     if (r.failedEntryCount != null) {
-      extras.add(OTel.attributeInt(
+      extras.add(OTelAPI.attributeInt(
         'aws.eventbridge.failed_entry_count',
         r.failedEntryCount!,
       ));
@@ -71,12 +75,12 @@ Future<T> tracedEventbridgePutEvents<T>({
         );
       }
     }
-    if (extras.isNotEmpty) span.addAttributes(OTel.attributes(extras));
+    if (extras.isNotEmpty) span.addAttributes(OTelAPI.attributes(extras));
     return r.value;
   } catch (e, st) {
-    span.addAttributes(OTel.attributes([
-      OTel.attributeString(
-        ErrorResource.errorType.key,
+    span.addAttributes(OTelAPI.attributes([
+      OTelAPI.attributeString(
+        ErrorAttributes.errorType.key,
         e.runtimeType.toString(),
       ),
     ]));
